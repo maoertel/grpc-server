@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package lifecycleservice;
+
+
+service LifeCycleService {
+  rpc GetDbClusterInfo(DbClusterKey) returns (DbClusterInfo) {}
+  rpc GetDbClusterKeyForProjectCreation(google.protobuf.Empty) returns (DbClusterKey) {}
+  rpc InitProject(ProjectKey) returns (EmptyResponse) {}
+  rpc UpdateLanguages(ProjectKey) returns (EmptyResponse) {}
+  rpc PurgeProject(ProjectWithClusters) returns (EmptyResponse) {}
+}
+
+message EmptyResponse {
+  enum Response {
+    Success = 0;
+    Failure = 1;
+  }
+  Response response = 1;
+}
+
+message DbClusterKey {
+  string key = 1;
+}
+
+message ProjectKey {
+  string key = 1;
+}
+
+message ESCluster {
+  string clusterKey = 1;
+  string replicateToClusterKey = 2;
+}
+
+message MongoCluster {
+  string clusterKey = 1;
+}
+
+
+message DbClusterInfo {
+  enum CLusterState {
+    ClusterNotFound = 0;
+    ClusterSharded = 1;
+    ClusterNotSharded = 2;
+  }
+  CLusterState state = 1;
+}
+
+message DbClusters {
+  ESCluster esCluster = 1;
+  MongoCluster mongoCluster = 2;
+}
+
+message ProjectWithClusters {
+  ProjectKey key = 1;
+  DbClusters dbClusters = 2;
+}
