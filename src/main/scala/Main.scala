@@ -1,4 +1,7 @@
+import GrpcTestServer._
 import cats.effect.{ExitCode, IO, IOApp, Resource}
+import cats.syntax.applicative._
+import io.grpc.Server
 import services.{GreeterImpl, LifeCycleServiceImpl}
 
 import java.util.logging.Logger
@@ -11,22 +14,20 @@ object Main extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] = {
 
-    val resource: Resource[IO, ApplicationConfig] = for {
+    val resource: Resource[IO, (Server, Int)] = for {
       config <- ServerConfig.resource
 
       greeterService <- GreeterImpl.resource
       lifeCycleService <- LifeCycleServiceImpl.resource
 
       server <- GrpcTestServer.resource(config.port, greeterService, lifeCycleService)
-    } yield ApplicationConfig(server, config.port)
+    } yield server -> config.port
 
-    resource.use { config =>
+    resource.use { case (server, port) =>
       for {
-        _ <- config.server.initialize(s"gRPC server started, listening on ${config.port}")
-        _ <- IO.never
+        _ <- logger.info(s"gRPC server started, listening on $port").pure[IO]
+        _ <- server.waitForTermination
       } yield ExitCode.Success
     }
   }
 }
-
-case class ApplicationConfig(server: GrpcTestServer, port: Int)
