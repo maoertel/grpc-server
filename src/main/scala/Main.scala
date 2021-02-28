@@ -1,28 +1,32 @@
-import java.util.logging.Logger
-
-import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.applicative._
-import com.typesafe.config.ConfigFactory
-import helloworld.helloworld.GreeterGrpc
-import lifecycleservice.lifecycleservice.LifeCycleServiceGrpc
+import cats.effect.{ExitCode, IO, IOApp, Resource}
 import services.{GreeterImpl, LifeCycleServiceImpl}
 
+import java.util.logging.Logger
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 object Main extends IOApp {
 
-  private implicit val logger: Logger = Logger.getLogger(classOf[GrpcTestServer].getName)
-  private implicit val ec: ExecutionContextExecutor = ExecutionContext.global
+  implicit private val logger: Logger = Logger.getLogger(classOf[GrpcTestServer].getName)
+  implicit private val ec: ExecutionContextExecutor = ExecutionContext.global
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- ConfigFactory.load("server.conf").pure[IO]
-      port = config.getInt("lifecycleService.port")
-      services =
-        GreeterGrpc.bindService(new GreeterImpl, ec) ::
-        LifeCycleServiceGrpc.bindService(new LifeCycleServiceImpl, ec) :: Nil
+  override def run(args: List[String]): IO[ExitCode] = {
 
-      server <- GrpcTestServer.create(services, port)
-      _ <- server.start
-    } yield ExitCode.Success
+    val resource: Resource[IO, ApplicationConfig] = for {
+      config <- ServerConfig.resource
+
+      greeterService <- GreeterImpl.resource
+      lifeCycleService <- LifeCycleServiceImpl.resource
+
+      server <- GrpcTestServer.resource(config.port, greeterService, lifeCycleService)
+    } yield ApplicationConfig(server, config.port)
+
+    resource.use { config =>
+      for {
+        _ <- config.server.initialize(s"gRPC server started, listening on ${config.port}")
+        _ <- IO.never
+      } yield ExitCode.Success
+    }
+  }
 }
+
+case class ApplicationConfig(server: GrpcTestServer, port: Int)

@@ -1,7 +1,9 @@
 import cats.Applicative
+import cats.effect.{IO, Resource}
 import cats.implicits._
 import com.google.protobuf.empty.Empty
 import helloworld.helloworld.{GreeterGrpc, HelloReply, HelloRequest}
+import io.grpc.ServerServiceDefinition
 import lifecycleservice.lifecycleservice.DbClusterInfo.CLusterState.{ClusterNotFound, ClusterNotSharded, ClusterSharded}
 import lifecycleservice.lifecycleservice.EmptyResponse.Response.Success
 import lifecycleservice.lifecycleservice._
@@ -19,7 +21,8 @@ object services {
         case _ => DbClusterInfo(ClusterNotFound)
       }).pure[Future]
 
-    override def getDbClusterKeyForProjectCreation(request: Empty): Future[DbClusterKey] = DbClusterKey("rs6").pure[Future]
+    override def getDbClusterKeyForProjectCreation(request: Empty): Future[DbClusterKey] =
+      DbClusterKey("rs6").pure[Future]
 
     override def initProject(request: ProjectKey): Future[EmptyResponse] = EmptyResponse(Success).pure[Future]
 
@@ -36,8 +39,18 @@ object services {
     }
   }
 
-  class GreeterImpl(implicit ec: ExecutionContext) extends GreeterGrpc.Greeter {
+  object LifeCycleServiceImpl {
+    def resource(implicit ec: ExecutionContext): Resource[IO, ServerServiceDefinition] =
+      Resource.make(LifeCycleServiceGrpc.bindService(new LifeCycleServiceImpl, ec).pure[IO])(_ => IO.unit)
+  }
 
-    override def sayHello(req: HelloRequest): Future[HelloReply] = HelloReply(message = "Hello " + req.name).pure[Future]
+  class GreeterImpl(implicit ec: ExecutionContext) extends GreeterGrpc.Greeter {
+    override def sayHello(req: HelloRequest): Future[HelloReply] =
+      HelloReply(message = "Hello " + req.name).pure[Future]
+  }
+
+  object GreeterImpl {
+    def resource(implicit ec: ExecutionContext): Resource[IO, ServerServiceDefinition] =
+      Resource.make(GreeterGrpc.bindService(new GreeterImpl, ec).pure[IO])(_ => IO.unit)
   }
 }
