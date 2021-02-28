@@ -2,9 +2,10 @@ project/project/target
 target
 *.class
 *.cache
-
+*.bsp
 *.iml
 *.ipr
 *.iws
 .idea
+.bsp
 out
