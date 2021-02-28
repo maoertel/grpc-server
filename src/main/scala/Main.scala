@@ -1,6 +1,7 @@
 import java.util.logging.Logger
 
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.applicative._
 import com.typesafe.config.ConfigFactory
 import helloworld.helloworld.GreeterGrpc
 import lifecycleservice.lifecycleservice.LifeCycleServiceGrpc
@@ -15,7 +16,7 @@ object Main extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
-      config <- IO(ConfigFactory.load("server.conf"))
+      config <- ConfigFactory.load("server.conf").pure[IO]
       port = config.getInt("lifecycleService.port")
       services =
         GreeterGrpc.bindService(new GreeterImpl, ec) ::
