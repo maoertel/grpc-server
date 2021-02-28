@@ -4,7 +4,6 @@ import "google/protobuf/empty.proto";
 
 package lifecycleservice;
 
-
 service LifeCycleService {
   rpc GetDbClusterInfo(DbClusterKey) returns (DbClusterInfo) {}
   rpc GetDbClusterKeyForProjectCreation(google.protobuf.Empty) returns (DbClusterKey) {}

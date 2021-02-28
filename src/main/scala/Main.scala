@@ -17,10 +17,9 @@ object Main extends IOApp {
     for {
       config <- IO(ConfigFactory.load("server.conf"))
       port = config.getInt("lifecycleService.port")
-      services = List(
-        GreeterGrpc.bindService(new GreeterImpl, ec),
-        LifeCycleServiceGrpc.bindService(new LifeCycleServiceImpl, ec)
-      )
+      services =
+        GreeterGrpc.bindService(new GreeterImpl, ec) ::
+        LifeCycleServiceGrpc.bindService(new LifeCycleServiceImpl, ec) :: Nil
 
       server <- GrpcTestServer.create(services, port)
       _ <- server.start

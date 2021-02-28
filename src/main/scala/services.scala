@@ -12,28 +12,25 @@ object services {
 
   class LifeCycleServiceImpl(implicit ec: ExecutionContext) extends LifeCycleServiceGrpc.LifeCycleService {
 
-    private def SuccF[A](value: A = ()) = Future.successful(value)
-
     override def getDbClusterInfo(request: DbClusterKey): Future[DbClusterInfo] =
-      SuccF(request.key match {
+      (request.key match {
         case "my-sharded-cluster" => DbClusterInfo(ClusterSharded)
         case "my-non-sharded-cluster" => DbClusterInfo(ClusterNotSharded)
         case _ => DbClusterInfo(ClusterNotFound)
-      })
+      }).pure[Future]
 
-    override def getDbClusterKeyForProjectCreation(request: Empty): Future[DbClusterKey] = SuccF(DbClusterKey("rs6"))
+    override def getDbClusterKeyForProjectCreation(request: Empty): Future[DbClusterKey] = DbClusterKey("rs6").pure[Future]
 
-    override def initProject(request: ProjectKey): Future[EmptyResponse] = SuccF(EmptyResponse(Success))
+    override def initProject(request: ProjectKey): Future[EmptyResponse] = EmptyResponse(Success).pure[Future]
 
-    override def updateLanguages(request: ProjectKey): Future[EmptyResponse] = SuccF(EmptyResponse(Success))
+    override def updateLanguages(request: ProjectKey): Future[EmptyResponse] = EmptyResponse(Success).pure[Future]
 
     override def purgeProject(request: ProjectWithClusters): Future[EmptyResponse] = {
       val maybeEsClusterKey = request.dbClusters.map(_.esCluster.map(_.clusterKey))
       val maybeDbClusterKey = request.dbClusters.map(_.mongoCluster.map(_.clusterKey))
 
-      val purgeEsCluster = maybeEsClusterKey.fold(SuccF())(_ => SuccF())
-      val purgeDbCluster = maybeDbClusterKey.fold(SuccF())(_ => SuccF())
-
+      val purgeEsCluster = ().pure[Future] // maybeEsClusterKey.fold(success)(_ => handle error)
+      val purgeDbCluster = ().pure[Future] // maybeDbClusterKey.fold(success)(_ => handle error)
 
       Applicative[Future].map2(purgeEsCluster, purgeDbCluster) { case (_, _) => EmptyResponse(Success) }
     }
@@ -41,9 +38,6 @@ object services {
 
   class GreeterImpl(implicit ec: ExecutionContext) extends GreeterGrpc.Greeter {
 
-    override def sayHello(req: HelloRequest): Future[HelloReply] =
-      HelloReply(message = "Hello " + req.name).pure[Future]
-
+    override def sayHello(req: HelloRequest): Future[HelloReply] = HelloReply(message = "Hello " + req.name).pure[Future]
   }
-
 }
