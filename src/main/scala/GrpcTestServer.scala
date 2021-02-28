@@ -1,5 +1,4 @@
 import cats.effect.{IO, Resource}
-import cats.syntax.applicative._
 import io.grpc.protobuf.services.ProtoReflectionService
 import io.grpc.{Server, ServerBuilder, ServerServiceDefinition}
 
@@ -12,13 +11,13 @@ class GrpcTestServer(
 
   private def startServer: IO[Server] =
     for {
-      server <- services
-        .foldLeft(ServerBuilder.forPort(port).addService(ProtoReflectionService.newInstance())) {
-          case (builder, serviceDefinition) => builder.addService(serviceDefinition)
-        }
-        .build()
-        .start()
-        .pure[IO]
+      server <- IO(
+        services
+          .foldLeft(ServerBuilder.forPort(port).addService(ProtoReflectionService.newInstance())) {
+            case (builder, serviceDefinition) => builder.addService(serviceDefinition)
+          }
+          .build()
+          .start())
       _ = sys.addShutdownHook(server.shutdown())
     } yield server
 }
@@ -29,9 +28,5 @@ object GrpcTestServer {
     port: Int,
     services: ServerServiceDefinition*
   )(implicit executionContext: ExecutionContext): Resource[IO, Server] =
-    Resource.make(new GrpcTestServer(services.toList, port).startServer)(_ => IO.unit)
-
-  implicit class serverWrapper(server: Server) {
-    def waitForTermination: IO[Unit] = server.awaitTermination().pure[IO]
-  }
+    Resource.make(new GrpcTestServer(services.toList, port).startServer)(server => IO(server.awaitTermination()))
 }
