@@ -1,4 +1,5 @@
 import cats.effect.{ExitCode, IO, IOApp, Resource}
+import cats.syntax.applicative._
 import services.{GreeterImpl, LifeCycleServiceImpl}
 
 import java.util.logging.Logger
@@ -20,6 +21,6 @@ object Main extends IOApp {
       _ <- GrpcTestServer.resource(config.port, greeterService, lifeCycleService)
     } yield config.port
 
-    resource.use(port => IO(logger.info(s"gRPC server started, listening on $port")) as ExitCode.Success)
+    resource.use(port => s"gRPC server started, listening on $port".pure[IO] map logger.info as ExitCode.Success)
   }
 }
